@@ -66,11 +66,6 @@ summary{cursor:pointer;font-size:13px;letter-spacing:.06em;text-transform:upperc
   <button class="carry" id="carry"></button>
 
   <section>
-    <h2>Top 3 priorities</h2>
-    <div id="prios"></div>
-  </section>
-
-  <section>
     <h2>Schedule and tasks</h2>
     <form class="add" id="form">
       <input type="time" id="when" aria-label="Time (optional)">
@@ -165,15 +160,6 @@ summary{cursor:pointer;font-size:13px;letter-spacing:.06em;text-transform:upperc
 
     var done=d.tasks.filter(function(t){return t.done}).length;
     $('bar').style.width=(d.tasks.length?Math.round(done/d.tasks.length*100):0)+'%';
-
-    var pe=$('prios');pe.innerHTML='';
-    for(var i=0;i<3;i++){(function(i){
-      var row=document.createElement('div');row.className='prio';
-      var n=document.createElement('span');n.textContent=i+1;
-      var inp=document.createElement('input');inp.type='text';inp.value=d.prios[i]||'';inp.placeholder='Priority '+(i+1);
-      inp.addEventListener('input',function(){d.prios[i]=inp.value;save()});
-      row.appendChild(n);row.appendChild(inp);pe.appendChild(row);
-    })(i)}
 
     var tasks=d.tasks.slice().sort(function(a,b){
       if(a.done!==b.done)return a.done?1:-1;
