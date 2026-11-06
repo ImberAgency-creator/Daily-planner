@@ -120,10 +120,15 @@ summary{cursor:pointer;font-size:13px;letter-spacing:.06em;text-transform:upperc
   function routine(){if(!data._routine)data._routine=[];return data._routine}
   function applyRoutine(k){
     if(k<todayIso)return;
-    var d=day(k);if(d.routineApplied)return;
-    var wd=parse(k).getDay();
-    routine().forEach(function(r){if(r.days.indexOf(wd)>-1)d.tasks.push({id:uid(),rid:r.id,text:r.text,time:r.time||'',done:false})});
-    d.routineApplied=true;save();
+    var d=day(k);
+    if(!d.applied){d.applied=[];d.tasks.forEach(function(t){if(t.rid&&d.applied.indexOf(t.rid)<0)d.applied.push(t.rid)})}
+    var wd=parse(k).getDay(),changed=false;
+    routine().forEach(function(r){
+      if(d.applied.indexOf(r.id)>-1||r.days.indexOf(wd)<0)return;
+      d.tasks.push({id:uid(),rid:r.id,text:r.text,time:r.time||'',done:false});
+      d.applied.push(r.id);changed=true;
+    });
+    if(changed)save();
   }
   function renderRoutine(){
     var c=$('chips');c.innerHTML='';
@@ -219,7 +224,6 @@ summary{cursor:pointer;font-size:13px;letter-spacing:.06em;text-transform:upperc
     var text=$('rwhat').value.trim();if(!text||!sel.length)return;
     var r={id:uid(),text:text,time:$('rwhen').value,days:sel.slice()};
     routine().push(r);
-    if(cur>=todayIso&&r.days.indexOf(parse(cur).getDay())>-1)day().tasks.push({id:uid(),rid:r.id,text:r.text,time:r.time,done:false});
     $('rwhat').value='';$('rwhen').value='';save();render();
   });
   $('notes').addEventListener('input',function(){day().notes=$('notes').value;save()});
