@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Planner</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Planner">
+<meta name="theme-color" content="#2f5d50">
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1c1b19;--mute:#76736b;--line:#e6e3da;--accent:#2f5d50;--accent-soft:#e3eee9;--warn:#b4532a}
+@media(prefers-color-scheme:dark){:root{--bg:#161614;--card:#201f1c;--ink:#f1efe8;--mute:#9b978c;--line:#34322d;--accent:#7fc4ad;--accent-soft:#25362f;--warn:#e08a5e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:560px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(80px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+h1{font-size:22px;margin:0;font-weight:650}
+.sub{color:var(--mute);font-size:14px;margin:0 0 16px}
+.nav button{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 12px;font-size:15px;cursor:pointer}
+.nav button.today{color:var(--accent);font-weight:600}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:0 0 20px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 10px;font-weight:600}
+.prio{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.prio span{width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700;display:grid;place-items:center;flex:none}
+input[type=text],input[type=time]{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+input[type=time]{width:auto;flex:none}
+input:focus{outline:2px solid var(--accent);outline-offset:0}
+.add{display:flex;gap:8px;margin-bottom:12px}
+.add button{flex:none;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 16px;font-size:20px;cursor:pointer}
+@media(prefers-color-scheme:dark){.add button{color:#10221c}}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+li input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.t{flex:1;min-width:0;word-break:break-word}
+.time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:99px;flex:none}
+li.done .t{text-decoration:line-through;color:var(--mute)}
+.x{background:none;border:0;color:var(--mute);font-size:20px;cursor:pointer;padding:4px 8px}
+.empty{color:var(--mute);font-size:14px;padding:6px 0}
+.carry{display:none;width:100%;margin-bottom:16px;background:var(--card);border:1px dashed var(--warn);color:var(--warn);border-radius:12px;padding:10px;font:inherit;cursor:pointer}
+textarea{width:100%;min-height:80px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;resize:vertical}
+.note{color:var(--mute);font-size:12px;text-align:center;margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="title">Today</h1>
+    <div class="nav"><button id="prev" aria-label="Previous day">&larr;</button> <button id="today" class="today">Today</button> <button id="next" aria-label="Next day">&rarr;</button></div>
+  </header>
+  <p class="sub" id="sub"></p>
+  <div class="bar"><i id="bar"></i></div>
+
+  <button class="carry" id="carry"></button>
+
+  <section>
+    <h2>Top 3 priorities</h2>
+    <div id="prios"></div>
+  </section>
+
+  <section>
+    <h2>Schedule and tasks</h2>
+    <form class="add" id="form">
+      <input type="time" id="when" aria-label="Time (optional)">
+      <input type="text" id="what" placeholder="Add a task" autocomplete="off" aria-label="Task">
+      <button type="submit" aria-label="Add">+</button>
+    </form>
+    <ul id="list"></ul>
+    <div class="empty" id="empty">Nothing planned yet.</div>
+  </section>
+
+  <section>
+    <h2>Notes</h2>
+    <textarea id="notes" placeholder="Ideas, links, things to follow up on"></textarea>
+  </section>
+  <p class="note">Saved in this browser only. Clearing site data erases it.</p>
+</main>
+
+<script>
+(function(){
+  var KEY='daily-planner-v1';
+  var mem={};
+  function load(){try{var r=localStorage.getItem(KEY);return r?JSON.parse(r):{}}catch(e){return mem}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){mem=data}}
+  var data=load();
+  function iso(d){var m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(x<10?'0':'')+x}
+  function parse(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+  var todayIso=iso(new Date());
+  var cur=todayIso;
+  function day(k){k=k||cur;if(!data[k])data[k]={prios:['','',''],tasks:[],notes:''};return data[k]}
+  function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+  var $=function(id){return document.getElementById(id)};
+
+  function render(){
+    var d=day();
+    var dt=parse(cur);
+    $('title').textContent=cur===todayIso?'Today':dt.toLocaleDateString('en-GB',{weekday:'long'});
+    $('sub').textContent=dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+    var done=d.tasks.filter(function(t){return t.done}).length;
+    $('bar').style.width=(d.tasks.length?Math.round(done/d.tasks.length*100):0)+'%';
+
+    var pe=$('prios');pe.innerHTML='';
+    for(var i=0;i<3;i++){(function(i){
+      var row=document.createElement('div');row.className='prio';
+      var n=document.createElement('span');n.textContent=i+1;
+      var inp=document.createElement('input');inp.type='text';inp.value=d.prios[i]||'';inp.placeholder='Priority '+(i+1);
+      inp.addEventListener('input',function(){d.prios[i]=inp.value;save()});
+      row.appendChild(n);row.appendChild(inp);pe.appendChild(row);
+    })(i)}
+
+    var tasks=d.tasks.slice().sort(function(a,b){
+      if(a.done!==b.done)return a.done?1:-1;
+      if(a.time&&b.time)return a.time<b.time?-1:1;
+      if(a.time)return -1;if(b.time)return 1;return 0;
+    });
+    var ul=$('list');ul.innerHTML='';
+    tasks.forEach(function(t){
+      var li=document.createElement('li');if(t.done)li.className='done';
+      var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!t.done;
+      cb.addEventListener('change',function(){t.done=cb.checked;save();render()});
+      li.appendChild(cb);
+      if(t.time){var tm=document.createElement('span');tm.className='time';tm.textContent=t.time;li.appendChild(tm)}
+      var tx=document.createElement('span');tx.className='t';tx.textContent=t.text;li.appendChild(tx);
+      var x=document.createElement('button');x.className='x';x.textContent='×';x.setAttribute('aria-label','Delete');
+      x.addEventListener('click',function(){d.tasks=d.tasks.filter(function(y){return y.id!==t.id});save();render()});
+      li.appendChild(x);ul.appendChild(li);
+    });
+    $('empty').style.display=d.tasks.length?'none':'block';
+    $('notes').value=d.notes||'';
+
+    // carry over unfinished tasks from yesterday (only when viewing today)
+    var btn=$('carry');btn.style.display='none';
+    if(cur===todayIso){
+      var y=new Date();y.setDate(y.getDate()-1);var yd=data[iso(y)];
+      if(yd){
+        var open=yd.tasks.filter(function(t){return !t.done&&!t.carried});
+        if(open.length){btn.style.display='block';btn.textContent='Carry over '+open.length+' unfinished task'+(open.length>1?'s':'')+' from yesterday';
+          btn.onclick=function(){
+            open.forEach(function(t){t.carried=true;day().tasks.push({id:uid(),text:t.text,time:'',done:false})});
+            save();render();
+          };
+        }
+      }
+    }
+  }
+
+  $('form').addEventListener('submit',function(e){
+    e.preventDefault();
+    var text=$('what').value.trim();if(!text)return;
+    day().tasks.push({id:uid(),text:text,time:$('when').value,done:false});
+    $('what').value='';$('when').value='';save();render();$('what').focus();
+  });
+  $('notes').addEventListener('input',function(){day().notes=$('notes').value;save()});
+  function shift(n){var d=parse(cur);d.setDate(d.getDate()+n);cur=iso(d);render()}
+  $('prev').onclick=function(){shift(-1)};
+  $('next').onclick=function(){shift(1)};
+  $('today').onclick=function(){cur=todayIso;render()};
+  render();
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+</script>
+</body>
+</html>
