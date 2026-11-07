@@ -68,10 +68,6 @@ li.wrap{flex-wrap:wrap}
 .hd.pending{border-color:var(--accent);color:var(--accent)}
 .hd.off,.hd.na,.hd.skip{opacity:.35}
 .streak{margin-left:6px;font-size:12px;color:var(--accent)}
-.row{display:flex;gap:8px;margin:12px 0}
-.row button{flex:1;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
-.hint{color:var(--mute);font-size:13px;margin:10px 0 0}
-#bMsg{font-size:13px;color:var(--accent);margin-top:8px;min-height:1em}
 #sheet{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:0 12px calc(12px + env(safe-area-inset-bottom))}
 .sheet-card{width:100%;max-width:560px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
 .sheet-title{font-weight:600;word-break:break-word}
@@ -118,18 +114,6 @@ li.wrap{flex-wrap:wrap}
       </form>
       <div class="chips" id="chips"></div>
       <ul id="rlist"></ul>
-    </details>
-  </section>
-
-  <section>
-    <details>
-      <summary>Backup and restore</summary>
-      <p class="hint">Your tasks are stored only on this phone. Export a copy now and then and keep it in Files or Notes.</p>
-      <div class="row"><button type="button" id="bExport">Export</button><button type="button" id="bFile">Restore from file</button></div>
-      <input type="file" id="bPick" accept=".json,application/json,text/plain" hidden>
-      <textarea id="bText" placeholder="Your backup text shows here after Export. To restore, paste a backup here and tap Restore from text."></textarea>
-      <div class="row"><button type="button" id="bRestore">Restore from text</button></div>
-      <div id="bMsg"></div>
     </details>
   </section>
 
@@ -375,39 +359,6 @@ li.wrap{flex-wrap:wrap}
     }
     save();closeSheet();render();
   });
-
-  // ----- backup and restore -----
-  function bmsg(t){$('bMsg').textContent=t}
-  function validBackup(o){
-    return !!o&&typeof o==='object'&&!Array.isArray(o)&&Object.keys(o).every(function(k){
-      return k==='_routine'?Array.isArray(o[k]):(/^\d{4}-\d{2}-\d{2}$/.test(k)&&o[k]&&Array.isArray(o[k].tasks));
-    });
-  }
-  $('bExport').onclick=async function(){
-    var json=JSON.stringify(data);$('bText').value=json;
-    try{
-      var f=new File([json],'daily-planner-backup-'+todayIso+'.json',{type:'application/json'});
-      if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Daily planner backup'});bmsg('Backup shared. Save it to Files.');return}
-    }catch(e){if(e&&e.name==='AbortError'){bmsg('Cancelled.');return}}
-    try{await navigator.clipboard.writeText(json);bmsg('Copied. Paste it into Notes or an email to keep it.')}
-    catch(e){bmsg('Select the text below and copy it.')}
-  };
-  $('bFile').onclick=function(){$('bPick').click()};
-  $('bPick').onchange=function(){
-    var f=this.files&&this.files[0];if(!f)return;
-    var rd=new FileReader();rd.onload=function(){$('bText').value=String(rd.result);bmsg('File loaded. Tap Restore from text to apply it.')};
-    rd.readAsText(f);this.value='';
-  };
-  var armed=null;
-  $('bRestore').onclick=function(){
-    var b=$('bRestore'),parsed;
-    try{parsed=JSON.parse($('bText').value)}catch(e){bmsg('That is not a valid backup.');return}
-    if(!validBackup(parsed)){bmsg('That is not a valid backup.');return}
-    if(!armed){b.textContent='Tap again to replace all current data';armed=setTimeout(function(){armed=null;b.textContent='Restore from text'},5000);return}
-    clearTimeout(armed);armed=null;b.textContent='Restore from text';
-    data=parsed;save();cur=todayIso;render();
-    bmsg('Restored '+Object.keys(parsed).filter(function(k){return k!=='_routine'}).length+' days.');
-  };
 
   function shift(n){var d=parse(cur);d.setDate(d.getDate()+n);cur=iso(d);render()}
   $('prev').onclick=function(){shift(-1)};
