@@ -78,6 +78,7 @@ summary{cursor:pointer;font-size:13px;letter-spacing:.06em;text-transform:upperc
       <input type="text" id="what" placeholder="Add a task" autocomplete="off" aria-label="Task">
       <button type="submit" aria-label="Add">+</button>
     </form>
+    <div class="chips pick" id="pick"></div>
     <ul id="list"></ul>
     <div class="empty" id="empty">Nothing planned yet.</div>
   </section>
@@ -119,6 +120,18 @@ summary{cursor:pointer;font-size:13px;letter-spacing:.06em;text-transform:upperc
   var ORDER=[1,2,3,4,5,6,0],DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var sel=[1,2,3,4,5];
   function prio(t){return t.rid?1:(t.p||3)}
+  var pri=3;
+  function renderPick(){
+    var c=$('pick');c.innerHTML='';
+    [1,2,3].forEach(function(p){
+      var b=document.createElement('button');b.type='button';
+      b.className='p'+p+(pri===p?' on':'');
+      b.innerHTML=flagSvg(p)+'<span>'+PN[p]+'</span>';
+      b.setAttribute('aria-label',PN[p]+' priority');
+      b.onclick=function(){pri=p;renderPick()};
+      c.appendChild(b);
+    });
+  }
   var PN={1:'High',2:'Medium',3:'Low'};
   function flagSvg(p){return '<svg class="p'+p+'" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 3v18" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M5 4h13l-3 4.2 3 4.2H5z" fill="currentColor"/></svg>'}
   function routine(){if(!data._routine)data._routine=[];return data._routine}
@@ -219,7 +232,7 @@ summary{cursor:pointer;font-size:13px;letter-spacing:.06em;text-transform:upperc
   $('form').addEventListener('submit',function(e){
     e.preventDefault();
     var text=$('what').value.trim();if(!text)return;
-    day().tasks.push({id:uid(),text:text,time:$('when').value,p:3,done:false});
+    day().tasks.push({id:uid(),text:text,time:$('when').value,p:pri,done:false});
     $('what').value='';$('when').value='';save();render();$('what').focus();
   });
   $('rform').addEventListener('submit',function(e){
@@ -234,6 +247,7 @@ summary{cursor:pointer;font-size:13px;letter-spacing:.06em;text-transform:upperc
   $('prev').onclick=function(){shift(-1)};
   $('next').onclick=function(){shift(1)};
   $('today').onclick=function(){cur=todayIso;render()};
+  renderPick();
   render();
 })();
 </script>
