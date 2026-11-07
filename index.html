@@ -85,7 +85,12 @@ li.wrap{flex-wrap:wrap}
 .datebtn{position:relative;display:inline-flex;align-items:center;gap:6px;min-width:0}
 .datebtn .caret{font-size:11px;color:rgba(255,255,255,.85)}
 .datebtn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;border:0;padding:0;margin:0;cursor:pointer}
-.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.week{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 36px)/7);gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain;padding-bottom:2px}
+.week::-webkit-scrollbar{display:none}
+.wd.wk{scroll-snap-align:start}
+.weekhead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+.weekhead h2{margin:0}
+.wlabel{font-size:13px;color:var(--mute);font-weight:600}
 .wd{font:inherit;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:14px;padding:8px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;min-width:0}
 .wd small{font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.03em}
 .wd b{font-size:16px;font-weight:650}
@@ -116,7 +121,7 @@ li.wrap{flex-wrap:wrap}
   <button class="carry" id="carry"></button>
 
   <section>
-    <h2>Week</h2>
+    <div class="weekhead"><h2>Week</h2><span class="wlabel" id="weekLabel"></span></div>
     <div class="week" id="week"></div>
   </section>
 
@@ -305,23 +310,53 @@ li.wrap{flex-wrap:wrap}
     });
   }
 
-  function renderWeek(){
-    var c=$('week');c.innerHTML='';
-    var start=mondayOf(cur);
-    for(var i=0;i<7;i++){(function(k){
-      var e=data[k],tasks=(e&&e.tasks)||[],done=tasks.filter(function(t){return t.done}).length;
-      var b=document.createElement('button');b.type='button';
-      b.className='wd'+(k===cur?' sel':'')+(k===todayIso?' today':'')+(tasks.length&&done===tasks.length?' full':'');
-      b.setAttribute('aria-label',fmtDay(k)+(tasks.length?', '+done+' of '+tasks.length+' done':''));
+  var wk={start:'',map:{},cells:[],first:true,tick:false};
+  function buildWeek(startK){
+    var c=$('week');c.innerHTML='';wk.start=startK;wk.map={};wk.cells=[];
+    for(var i=0;i<68*7;i++){(function(k,i){
+      var b=document.createElement('button');b.type='button';b.dataset.mon=i%7===0?'1':'';
       var sm=document.createElement('small');sm.textContent=DN[parse(k).getDay()].slice(0,2);
       var nb=document.createElement('b');nb.textContent=parse(k).getDate();
-      var wb=document.createElement('div');wb.className='wb';var fi=document.createElement('i');fi.style.width=(tasks.length?Math.round(done/tasks.length*100):0)+'%';wb.appendChild(fi);
-      var wc=document.createElement('div');wc.className='wc';wc.textContent=tasks.length?done+'/'+tasks.length:'';
+      var wb=document.createElement('div');wb.className='wb';var fi=document.createElement('i');wb.appendChild(fi);
+      var wc=document.createElement('div');wc.className='wc';
       b.appendChild(sm);b.appendChild(nb);b.appendChild(wb);b.appendChild(wc);
+      b._fi=fi;b._wc=wc;
       b.onclick=function(){cur=k;render()};
-      c.appendChild(b);
-    })(addDays(start,i))}
+      c.appendChild(b);wk.map[k]=b;wk.cells.push(k);
+    })(addDays(startK,i),i)}
   }
+  function updateWeekLabel(){
+    var box=$('week');if(!wk.cells.length)return;
+    var first=wk.map[wk.cells[0]],cw=(first.offsetWidth||0)+6;
+    var idx=Math.round(box.scrollLeft/(cw||1));idx=Math.max(0,Math.min(idx,wk.cells.length-7));
+    $('weekLabel').textContent=parse(wk.cells[idx+3]).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  }
+  function renderWeek(){
+    var box=$('week');
+    var rebuilt=false;
+    if(!wk.map[cur]){buildWeek(addDays(mondayOf(cur),-56));rebuilt=true}
+    wk.cells.forEach(function(k){
+      var b=wk.map[k],e=data[k],tasks=(e&&e.tasks)||[],done=tasks.filter(function(t){return t.done}).length;
+      b.className='wd'+(b.dataset.mon?' wk':'')+(k===cur?' sel':'')+(k===todayIso?' today':'')+(tasks.length&&done===tasks.length?' full':'');
+      b._fi.style.width=(tasks.length?Math.round(done/tasks.length*100):0)+'%';
+      b._wc.textContent=tasks.length?done+'/'+tasks.length:'';
+      b.setAttribute('aria-label',fmtDay(k)+(tasks.length?', '+done+' of '+tasks.length+' done':''));
+    });
+    var cell=wk.map[cur];
+    if(box.clientWidth){
+      var l=cell.offsetLeft,vis=l>=box.scrollLeft-1&&l+cell.offsetWidth<=box.scrollLeft+box.clientWidth+1;
+      if(!vis||wk.first||rebuilt){
+        var mon=wk.map[mondayOf(cur)];
+        box.scrollTo({left:mon.offsetLeft,behavior:(wk.first||rebuilt)?'auto':'smooth'});
+      }
+      wk.first=false;
+    }
+    updateWeekLabel();
+  }
+  $('week').addEventListener('scroll',function(){
+    if(wk.tick)return;wk.tick=true;
+    requestAnimationFrame(function(){wk.tick=false;updateWeekLabel()});
+  },{passive:true});
 
   function render(){
     applyRoutine(cur);
