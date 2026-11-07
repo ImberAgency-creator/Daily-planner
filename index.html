@@ -108,7 +108,6 @@ li.wrap{flex-wrap:wrap}
     <h1 id="title">Imad’s daily tasks</h1>
     <div class="herorow">
       <label class="datebtn"><span class="sub" id="sub"></span><span class="caret">&#9662;</span><input type="date" id="jump" aria-label="Pick a date"></label>
-      <div class="nav"><button id="prev" aria-label="Previous day">&larr;</button><button id="today" class="today">Today</button><button id="next" aria-label="Next day">&rarr;</button></div>
     </div>
     <div class="progtext" id="progText"></div>
     <div class="bar"><i id="bar"></i></div>
@@ -454,10 +453,6 @@ li.wrap{flex-wrap:wrap}
     save();closeSheet();render();
   });
 
-  function shift(n){var d=parse(cur);d.setDate(d.getDate()+n);cur=iso(d);render()}
-  $('prev').onclick=function(){shift(-1)};
-  $('next').onclick=function(){shift(1)};
-  $('today').onclick=function(){cur=todayIso;render()};
   renderPick();
   render();
 })();
